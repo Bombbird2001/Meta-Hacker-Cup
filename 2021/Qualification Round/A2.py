@@ -1,24 +1,26 @@
 import copy
+from typing import List
+
+swap_table = [[False for _ in range(26)] for _ in range(26)]
 
 
-cache = [[False for _ in range(26)] for _ in range(26)]
-
-
-def build_graph(transformation_list):
+def pre_compute_swap_count(transformation_list):
     travel_graph = [[0 for _ in range(26)] for _ in range(26)]
     # Map all transformations to their start letter
     for trans in transformation_list:
         from_index = ord(trans[0]) - 65
         to_index = ord(trans[1]) - 65
         travel_graph[from_index][to_index] = 1
-    # print(travel_graph)
-    return travel_graph
-    # for k in range(26):
-    #    traverse_graph(k, k, travel_graph, 0, [False for _ in range(26)])
+    for k in range(26):
+        traverse_graph(k, k, travel_graph, 0, [False for _ in range(26)], [])
 
 
-def traverse_graph(start_index, curr_index, travel_graph, steps, travelled_list):
+def traverse_graph(start_index, curr_index, travel_graph, steps, travelled_list, travel_queue: List[tuple[int, int]]):
     can_go = travel_graph[curr_index]
+    travelled_list[curr_index] = True
+    curr_val = swap_table[start_index][curr_index]
+    if curr_val == False or curr_val > steps:
+        swap_table[start_index][curr_index] = steps
     for to_index, step in enumerate(can_go):
         if step == 0:
             # No path, skip
@@ -26,15 +28,17 @@ def traverse_graph(start_index, curr_index, travel_graph, steps, travelled_list)
         if travelled_list[to_index]:
             # Already traversed, skip
             continue
-        travel_graph[start_index][to_index] = steps + 1
-        travelled_list[to_index] = True
-        traverse_graph(start_index, to_index, travel_graph, steps + 1, travelled_list)
+        travel_queue.append((to_index, steps))
+    while len(travel_queue) > 0:
+        next_travel = travel_queue[0]
+        travel_queue.pop(0)
+        traverse_graph(start_index, next_travel[0], travel_graph, next_travel[1] + 1, travelled_list, travel_queue)
 
 
 def traverse(curr_index, target_index, travel_graph, travelled_list, depth):
     # print("{} {} {} {}".format(curr_index, target_index, depth, travelled_list))
-    if cache[curr_index][target_index] != False:
-        return cache[curr_index][target_index]
+    if swap_table[curr_index][target_index] != False:
+        return swap_table[curr_index][target_index]
     if target_index == curr_index:
         # print("Found, returning 0")
         return 0
@@ -55,38 +59,59 @@ def traverse(curr_index, target_index, travel_graph, travelled_list, depth):
         if min_steps is None or (steps_needed is not None and steps_needed < min_steps):
             min_steps = steps_needed
     final_res = None if min_steps is None else 1 + min_steps
-    cache[curr_index][target_index] = final_res
+    swap_table[curr_index][target_index] = final_res
     return final_res
 
 
-def make_consistent(string_to_change, travel_graph):
+def make_consistent(string_to_change):
     min_steps = None
     for target_index in range(26):
         cum_steps = 0
         failed = False
         for c in string_to_change:
             curr_index = ord(c) - 65
-            # Search cache first
-            # res = None
             if curr_index == target_index:
                 continue
-            if cache[curr_index][target_index] == False:
-                # Cache not found, perform traverse
-                res = traverse(curr_index, target_index, travel_graph, [False for _ in range(26)], 0)
-                cache[curr_index][target_index] = res
-                # print("{} to {}: {}".format(curr_index, target_index, res))
-            else:
-                res = cache[curr_index][target_index]
-            if res is None:
-                # Cannot be changed to letter, skip this letter
+            path_steps = swap_table[curr_index][target_index]
+            if path_steps == False:
+                # No path found, skip this letter
                 failed = True
                 break
-            cum_steps += res
+            cum_steps += path_steps
         if failed:
             continue
         if min_steps is None or cum_steps < min_steps:
             min_steps = cum_steps
+        print(cum_steps)
+    print("Min step: " + str(min_steps))
     return min_steps if min_steps is not None else -1
+    # min_steps = None
+    # for target_index in range(26):
+    #     cum_steps = 0
+    #     failed = False
+    #     for c in string_to_change:
+    #         curr_index = ord(c) - 65
+    #         # Search cache first
+    #         # res = None
+    #         if curr_index == target_index:
+    #             continue
+    #         if swap_table[curr_index][target_index] == False:
+    #             # Cache not found, perform traverse
+    #             res = traverse(curr_index, target_index, travel_graph, [False for _ in range(26)], 0)
+    #             swap_table[curr_index][target_index] = res
+    #             # print("{} to {}: {}".format(curr_index, target_index, res))
+    #         else:
+    #             res = swap_table[curr_index][target_index]
+    #         if res is None:
+    #             # Cannot be changed to letter, skip this letter
+    #             failed = True
+    #             break
+    #         cum_steps += res
+    #     if failed:
+    #         continue
+    #     if min_steps is None or cum_steps < min_steps:
+    #         min_steps = cum_steps
+    # return min_steps if min_steps is not None else -1
 
 
 with open("A2_output.txt", "w+") as of:
@@ -100,9 +125,10 @@ with open("A2_output.txt", "w+") as of:
             transList = []
             for j in range(transNo):
                 transList.append(f.readline().strip())
-            graph = build_graph(transList)
-            cache = [[False for _ in range(26)] for _ in range(26)]
-            result = make_consistent(string, graph)
+            swap_table = [[False for _ in range(26)] for _ in range(26)]
+            pre_compute_swap_count(transList)
+            print(swap_table)
+            result = make_consistent(string)
             case += 1
             if case > 1:
                 of.write("\n")
