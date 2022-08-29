@@ -5,44 +5,50 @@ traversals = 0
 
 
 def get_max_passengers_up_to_2_flights(curr_index: int, target_index: int, passengers: int, step: int,
-                                       adj_list: List[List[tuple[int, int]]], all_nodes: List[int]):
+                                       adj_list: List[List[tuple[int, int]]], all_nodes: dict):
     if curr_index == target_index and step > 0:
         # Ignore if traverses back to start index
         return
     if step == 0:
         for destination, max_pass in adj_list[curr_index]:
             # Direct flight - add capacity * 2 for two daily flights
-            all_nodes[destination] += max_pass * 2
+            if destination in all_nodes:
+                all_nodes[destination] += max_pass * 2
+            else:
+                all_nodes[destination] = max_pass * 2
             # Continue to 2nd step from this destination
             get_max_passengers_up_to_2_flights(destination, target_index, max_pass,
                                                step + 1, adj_list, all_nodes)
     if step == 1:
         for destination, max_pass in adj_list[curr_index]:
             # Reached after 2 flights - add minimum of capacity of first flight and this flight
-            all_nodes[destination] += min(passengers, max_pass)
+            if destination in all_nodes:
+                all_nodes[destination] += min(passengers, max_pass)
+            else:
+                all_nodes[destination] = min(passengers, max_pass)
 
 
 def max_passengers(start_index: int, target_index: int, adj_list: List[List[tuple[int, int]]], cache: dict) -> int:
-    list_to_use = []
+    dict_to_use = None
     # print("----------------\n{} {}".format(start_index, target_index))
     if target_index in cache:
-        list_to_use = cache[target_index]
-        # print(list_to_use)
+        dict_to_use = cache[target_index]
+        # print(dict_to_use)
         # print(cache)
         # print("Cache found for {}".format(target_index))
-        return list_to_use[start_index]
+        return dict_to_use[start_index] if start_index in dict_to_use else 0
     elif start_index in cache:
-        list_to_use = cache[start_index]
-        # print(list_to_use)
+        dict_to_use = cache[start_index]
+        # print(dict_to_use)
         # print(cache)
         # print("Cache found for {}".format(start_index))
-        return list_to_use[target_index]
-    if len(list_to_use) == 0:
-        list_to_use = [0 for _ in range(len(adj_list))]
-        # Empty list: no cache found, perform search
-        get_max_passengers_up_to_2_flights(target_index, target_index, 1000000000, 0, adj_list, list_to_use)
-        cache[target_index] = list_to_use
-    return list_to_use[start_index]
+        return dict_to_use[target_index] if target_index in dict_to_use else 0
+    else:
+        dict_to_use = {}
+        # No cache found, perform search
+        get_max_passengers_up_to_2_flights(target_index, target_index, 1000000000, 0, adj_list, dict_to_use)
+        cache[target_index] = dict_to_use
+    return dict_to_use[start_index] if start_index in dict_to_use else 0
 
 
 def traverse(curr_index: int, target_index: int, passengers: int, step: int, adj_list: [List[List[int]]], cache: dict) -> int:
