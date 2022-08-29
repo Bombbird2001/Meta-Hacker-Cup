@@ -4,8 +4,45 @@ from typing import List
 traversals = 0
 
 
+def get_max_passengers_up_to_2_flights(curr_index: int, target_index: int, passengers: int, step: int,
+                                       adj_list: List[List[tuple[int, int]]], all_nodes: List[int]):
+    if curr_index == target_index and step > 0:
+        # Ignore if traverses back to start index
+        return
+    if step == 0:
+        for destination, max_pass in adj_list[curr_index]:
+            # Direct flight - add capacity * 2 for two daily flights
+            all_nodes[destination] += max_pass * 2
+            # Continue to 2nd step from this destination
+            get_max_passengers_up_to_2_flights(destination, target_index, max_pass,
+                                               step + 1, adj_list, all_nodes)
+    if step == 1:
+        for destination, max_pass in adj_list[curr_index]:
+            # Reached after 2 flights - add minimum of capacity of first flight and this flight
+            all_nodes[destination] += min(passengers, max_pass)
+
+
 def max_passengers(start_index: int, target_index: int, adj_list: List[List[tuple[int, int]]], cache: dict) -> int:
-    return traverse(start_index, target_index, 1000000000, 0, adj_list, cache)
+    list_to_use = []
+    # print("----------------\n{} {}".format(start_index, target_index))
+    if target_index in cache:
+        list_to_use = cache[target_index]
+        # print(list_to_use)
+        # print(cache)
+        # print("Cache found for {}".format(target_index))
+        return list_to_use[start_index]
+    elif start_index in cache:
+        list_to_use = cache[start_index]
+        # print(list_to_use)
+        # print(cache)
+        # print("Cache found for {}".format(start_index))
+        return list_to_use[target_index]
+    if len(list_to_use) == 0:
+        list_to_use = [0 for _ in range(len(adj_list))]
+        # Empty list: no cache found, perform search
+        get_max_passengers_up_to_2_flights(target_index, target_index, 1000000000, 0, adj_list, list_to_use)
+        cache[target_index] = list_to_use
+    return list_to_use[start_index]
 
 
 def traverse(curr_index: int, target_index: int, passengers: int, step: int, adj_list: [List[List[int]]], cache: dict) -> int:
@@ -46,16 +83,18 @@ with open("D_output.txt", "w+") as of:
             days_res = []
             for k in range(days):
                 start, end = tuple(map(int, f.readline().strip().split(" ")))
-                key = "{}-{}".format(start if start < end else end, end if start < end else start)
-                res = None
-                if key in case_cache:
-                    res = case_cache[key]
-                    total_cache_hit += 1
-                    print("Cache hit {}".format(total_cache_hit))
-                if res is None:
-                    res = max_passengers(start - 1, end - 1, adjacency_list, case_cache)
-                    case_cache[key] = res
+                # key = "{}-{}".format(start if start < end else end, end if start < end else start)
+                # res = None
+                # if key in case_cache:
+                #     res = case_cache[key]
+                #     total_cache_hit += 1
+                #     print("Cache hit {}".format(total_cache_hit))
+                # if res is None:
+                #     res = max_passengers(start - 1, end - 1, adjacency_list, case_cache)
+                #     case_cache[key] = res
+                res = max_passengers(start - 1, end - 1, adjacency_list, case_cache)
                 days_res.append(str(res))
+                # print("Day {} done".format(k))
             if i > 0:
                 of.write("\n")
             of.write("Case #{}: {}".format(i + 1, " ".join(days_res)))
